@@ -13,7 +13,7 @@ ExternalProject_Add(mpv
         shaderc
         spirv-cross
     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
-    GIT_TAG f4210f84906c3b00a65fba198c8127b6757b9350
+    GIT_TAG v0.36.0
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} meson <BINARY_DIR> <SOURCE_DIR>
