@@ -48,7 +48,7 @@ jobs:
             echo "x86_64_level=-v3" >> $GITHUB_ENV
           fi
 
-      - name: Setup git config
+      - name: Setup git config & update dependencies
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -56,6 +56,8 @@ jobs:
           git config --global rebase.autoStash true
           git config --global fetch.prune true
           git config --global --add safe.directory $PWD
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel automake autoconf libtool m4 perl
 
       - uses: actions/checkout@main
         with:
