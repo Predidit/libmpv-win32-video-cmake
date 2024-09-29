@@ -69,7 +69,6 @@ ExternalProject_Add(ffmpeg
         --enable-dxva2
         --enable-libmfx
         --enable-d3d11va
-        --enable-ffnvcodec
 
         --disable-vaapi
         --disable-vdpau
