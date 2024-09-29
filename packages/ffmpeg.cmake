@@ -295,7 +295,7 @@ ExternalProject_Add(ffmpeg
 	--enable-encoder=jpegls
 
         --enable-network
-        --extra-cflags='-Wno-error=int-conversion'
+        --extra-cflags='-Wno-error=int-conversion -Wno-incompatible-pointer-types -Wno-format'
         "--extra-libs='-lsecurity -lschannel -lstdc++'"
         BUILD_COMMAND ${MAKE}
         INSTALL_COMMAND ${MAKE} install
