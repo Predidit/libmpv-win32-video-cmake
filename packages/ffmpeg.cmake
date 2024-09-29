@@ -25,8 +25,8 @@ ExternalProject_Add(ffmpeg
         mbedtls
         GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg.git
         SOURCE_DIR ${SOURCE_LOCATION}
-        GIT_TAG ea3d24bbe3c58b171e55fe2151fc7ffaca3ab3d2
-        PATCH_COMMAND ${EXEC} git apply ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-*.patch
+        GIT_CLONE_FLAGS "--sparse --filter=tree:0"
+        GIT_CLONE_POST_COMMAND "sparse-checkout set --no-cone /* !tests/ref/fate"
         UPDATE_COMMAND ""
         CONFIGURE_COMMAND ${EXEC} <SOURCE_DIR>/configure
         --cross-prefix=${TARGET_ARCH}-
