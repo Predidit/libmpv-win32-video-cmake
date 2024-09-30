@@ -23,7 +23,8 @@ ExternalProject_Add(mpv
         --buildtype=release
         --default-library=shared
         --prefer-static
-        --extra-cflags='-Wno-error'
+        -Dc_args=-Wno-error
+        -Dcpp_args=-Wno-error
         -Dc_link_args=-Wl,--gc-sections
         -Dcpp_link_args=-Wl,--gc-sections
         -Dgpl=false
