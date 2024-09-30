@@ -1,6 +1,7 @@
 set_property(DIRECTORY PROPERTY EP_STEP_TARGETS download)
 list(APPEND ep
     gmp
+    libplacebo
     xz
     lzo
     uchardet
