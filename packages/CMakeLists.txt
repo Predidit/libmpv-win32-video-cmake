@@ -69,6 +69,7 @@ list(APPEND ep
     glslang
     shaderc
     glad
+    fast_float
     libplacebo
     libdovi
     rav1e
