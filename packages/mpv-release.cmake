@@ -20,6 +20,7 @@ ExternalProject_Add(mpv-release
         fribidi
         lcms2
         libarchive
+        libplacebo
         libass
         libjpeg
         libpng

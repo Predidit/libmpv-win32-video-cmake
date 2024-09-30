@@ -69,6 +69,7 @@ list(APPEND ep
     glslang
     shaderc
     glad
+    libplacebo
     libdovi
     rav1e
     libva
