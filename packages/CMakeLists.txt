@@ -70,8 +70,8 @@ list(APPEND ep
     shaderc
     glad
     fast_float
-    libplacebo
     libdovi
+    libplacebo
     rav1e
     libva
     libzvbi
