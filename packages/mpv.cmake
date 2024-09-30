@@ -5,6 +5,7 @@ ExternalProject_Add(mpv
         fribidi
         lcms2
         libarchive
+        libplacebo
         libass
         libjpeg
         libpng
@@ -39,7 +40,6 @@ ExternalProject_Add(mpv
         -Dopenal=disabled
         -Dspirv-cross=enabled
         -Dvulkan=disabled
-        -Dlibplacebo=disabled
         -Degl-angle=enabled
     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
     INSTALL_COMMAND ""

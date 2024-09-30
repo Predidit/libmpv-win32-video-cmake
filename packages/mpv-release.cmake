@@ -20,6 +20,7 @@ ExternalProject_Add(mpv-release
         fribidi
         lcms2
         libarchive
+        libplacebo
         libass
         libjpeg
         libpng
@@ -50,7 +51,6 @@ ExternalProject_Add(mpv-release
         -Dopenal=disabled
         -Dspirv-cross=enabled
         -Dvulkan=disabled
-        -Dlibplacebo=disabled
         -Degl-angle=enabled
     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
     INSTALL_COMMAND ""
