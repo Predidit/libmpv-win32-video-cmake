@@ -48,6 +48,7 @@ list(APPEND ep
     nvcodec-headers
     libmysofa
     aom
+    xxhash
     dav1d
     libwebp
     vapoursynth
@@ -67,6 +68,8 @@ list(APPEND ep
     spirv-tools
     spirv-cross
     glslang
+    vulkan-header
+    vulkan
     shaderc
     glad
     fast_float
