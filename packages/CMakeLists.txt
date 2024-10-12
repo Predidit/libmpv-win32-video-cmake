@@ -29,7 +29,6 @@ list(APPEND ep
     libdvdread
     libdvdnav
     libiconv
-    luajit
     fribidi
     expat
     nettle
@@ -80,11 +79,9 @@ list(APPEND ep
     glad
     fast_float
     libdovi
-    svtav1
     libplacebo
     libva
     libzvbi
-    libaribcaption
     libsixel
     ffmpeg
     mpv

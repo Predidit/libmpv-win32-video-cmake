@@ -7,7 +7,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/custom_steps.cmake)
 cmake_policy(SET CMP0097 NEW)
 cmake_policy(SET CMP0114 NEW)
 if(POLICY CMP0135)
-  cmake_policy(SET CMP0135 NEW)
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 if(NOT CMAKE_GENERATOR STREQUAL "Ninja")

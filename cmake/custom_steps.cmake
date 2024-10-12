@@ -96,6 +96,7 @@ file(WRITE ${stamp_dir}/reset_head.sh
 "#!/bin/bash
 set -e
 if [[ ! -f \"${stamp_dir}/${_name}-patch\"  || \"${stamp_dir}/${_name}-download\" -nt \"${stamp_dir}/${_name}-patch\" || ! -f \"${stamp_dir}/HEAD\" || \"$(cat ${stamp_dir}/HEAD)\" != \"$(git -C ${source_dir} rev-parse @{u})\" ]]; then
+    echo ${source_dir}
     git -C ${source_dir} reset --hard ${reset} -q
     if [[ -z \"${git_reset}\" ]]; then
         find \"${stamp_dir}\" -type f  ! -iname '*.cmake' -size 0c -delete
@@ -114,7 +115,7 @@ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_
         INDEPENDENT TRUE
         WORKING_DIRECTORY <SOURCE_DIR>
         COMMAND bash -c "git am --abort 2> /dev/null || true"
-        COMMAND bash -c "git fetch --filter=tree:0 --no-recurse-submodules"
+        COMMAND bash -c "git fetch --no-recurse-submodules"
         COMMAND ${stamp_dir}/reset_head.sh
     )
     ExternalProject_Add_StepTargets(${_name} force-update)
