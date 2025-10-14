@@ -61,8 +61,6 @@ jobs:
           git config --global --add safe.directory $PWD
 
       - uses: actions/checkout@main
-        with:
-          ref: master
 
       - name: Loading clang sysroot cache
         id: load_clang_cache
@@ -222,8 +220,6 @@ jobs:
           git config --global --add safe.directory $PWD
 
       - uses: actions/checkout@main
-        with:
-          ref: master
 
       - name: Loading release_i686 cache
         uses: actions/cache/restore@main
