@@ -91,7 +91,7 @@ new file mode 100644
 index 0000000000000..9059834745fdb
 --- /dev/null
 +++ b/video/out/d3d11/libmpv_d3d11.c
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,90 @@
 +#include "common/msg.h"
 +#include "ra_d3d11.h"
 +#include "mpv/render_dxgi.h"
