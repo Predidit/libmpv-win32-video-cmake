@@ -1,24 +1,24 @@
-From b922ec67c730be040d737e98e66704f61e38652e Mon Sep 17 00:00:00 2001
-From: dragonflylee <dragonflylee@outlook.com>
-Date: Wed, 11 Oct 2023 21:50:13 +0800
+From e6dd0e8720d397d89e81bbac392be683a15935e0 Mon Sep 17 00:00:00 2001
+From: Predidit <34627277+Predidit@users.noreply.github.com>
+Date: Tue, 14 Oct 2025 16:16:42 +0800
 Subject: [PATCH] feat: add d3d11 render support
 
 ---
  include/mpv/render.h           |  6 +++
  include/mpv/render_dxgi.h      | 18 +++++++
  meson.build                    |  6 ++-
- video/out/d3d11/libmpv_d3d11.c | 87 ++++++++++++++++++++++++++++++++++
+ video/out/d3d11/libmpv_d3d11.c | 96 ++++++++++++++++++++++++++++++++++
  video/out/gpu/libmpv_gpu.c     |  3 ++
  video/out/gpu/libmpv_gpu.h     |  1 +
- 6 files changed, 119 insertions(+), 2 deletions(-)
+ 6 files changed, 128 insertions(+), 2 deletions(-)
  create mode 100644 include/mpv/render_dxgi.h
  create mode 100644 video/out/d3d11/libmpv_d3d11.c
 
 diff --git a/include/mpv/render.h b/include/mpv/render.h
-index 29f9b91e9625a..d3cefdcde42c2 100644
+index 99aadeb5d8..0bb33d4e56 100644
 --- a/include/mpv/render.h
 +++ b/include/mpv/render.h
-@@ -421,6 +421,10 @@ typedef enum mpv_render_param_type {
+@@ -422,6 +422,10 @@ typedef enum mpv_render_param_type {
       * See MPV_RENDER_PARAM_SW_STRIDE for alignment requirements.
       */
      MPV_RENDER_PARAM_SW_POINTER = 20,
@@ -29,7 +29,7 @@ index 29f9b91e9625a..d3cefdcde42c2 100644
  } mpv_render_param_type;
  
  /**
-@@ -467,6 +471,8 @@ typedef struct mpv_render_param {
+@@ -468,6 +472,8 @@ typedef struct mpv_render_param {
  #define MPV_RENDER_API_TYPE_OPENGL "opengl"
  // See section "Software renderer"
  #define MPV_RENDER_API_TYPE_SW "sw"
@@ -40,7 +40,7 @@ index 29f9b91e9625a..d3cefdcde42c2 100644
   * Flags used in mpv_render_frame_info.flags. Each value represents a bit in it.
 diff --git a/include/mpv/render_dxgi.h b/include/mpv/render_dxgi.h
 new file mode 100644
-index 0000000000000..5614cc99d994e
+index 0000000000..5614cc99d9
 --- /dev/null
 +++ b/include/mpv/render_dxgi.h
 @@ -0,0 +1,18 @@
@@ -63,7 +63,7 @@ index 0000000000000..5614cc99d994e
 +#endif
 +#endif // MPV_CLIENT_API_RENDER_DXGI_H_
 diff --git a/meson.build b/meson.build
-index f9fe4e726329a..0b19fbf1c1942 100644
+index 8d43b4c84b..0889e2d13a 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -1003,7 +1003,8 @@ d3d11 = get_option('d3d11').require(
@@ -76,7 +76,7 @@ index f9fe4e726329a..0b19fbf1c1942 100644
  endif
  
  wayland = {
-@@ -1776,7 +1777,8 @@ if get_option('libmpv')
+@@ -1774,7 +1775,8 @@ if get_option('libmpv')
                   description: 'mpv media player client library')
  
      headers = ['include/mpv/client.h', 'include/mpv/render.h',
@@ -88,10 +88,10 @@ index f9fe4e726329a..0b19fbf1c1942 100644
      # Allow projects to build with libmpv by cloning into ./subprojects/mpv
 diff --git a/video/out/d3d11/libmpv_d3d11.c b/video/out/d3d11/libmpv_d3d11.c
 new file mode 100644
-index 0000000000000..9059834745fdb
+index 0000000000..8b2822446e
 --- /dev/null
 +++ b/video/out/d3d11/libmpv_d3d11.c
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,96 @@
 +#include "common/msg.h"
 +#include "ra_d3d11.h"
 +#include "mpv/render_dxgi.h"
@@ -168,7 +168,6 @@ index 0000000000000..9059834745fdb
 +static void destroy(struct libmpv_gpu_context *ctx)
 +{
 +    struct priv *p = ctx->priv;
-+    
 +    if (p->ra_ctx) {
 +        if (p->ra_ctx->ra) {
 +            ra_tex_free(p->ra_ctx->ra, &p->tex);
@@ -178,7 +177,6 @@ index 0000000000000..9059834745fdb
 +            p->ra_ctx->spirv->fns->uninit(p->ra_ctx);
 +        talloc_free(p->ra_ctx);
 +    }
-+    
 +    SAFE_RELEASE(p->swapchain);
 +    SAFE_RELEASE(p->device);
 +}
@@ -190,9 +188,8 @@ index 0000000000000..9059834745fdb
 +    .done_frame  = done_frame,
 +    .destroy     = destroy,
 +};
-\ No newline at end of file
 diff --git a/video/out/gpu/libmpv_gpu.c b/video/out/gpu/libmpv_gpu.c
-index aae1d18eed9ef..bc65a73f7b738 100644
+index 1b13c79632..abeef947b6 100644
 --- a/video/out/gpu/libmpv_gpu.c
 +++ b/video/out/gpu/libmpv_gpu.c
 @@ -6,6 +6,9 @@
@@ -206,16 +203,13 @@ index aae1d18eed9ef..bc65a73f7b738 100644
      &libmpv_gpu_context_gl,
  #endif
 diff --git a/video/out/gpu/libmpv_gpu.h b/video/out/gpu/libmpv_gpu.h
-index 497dcc3f694c8..fad1a00c0a6d9 100644
+index 497dcc3f69..fad1a00c0a 100644
 --- a/video/out/gpu/libmpv_gpu.h
 +++ b/video/out/gpu/libmpv_gpu.h
-@@ -38,3 +38,7 @@ struct libmpv_gpu_context_fns {
+@@ -38,3 +38,4 @@ struct libmpv_gpu_context_fns {
  };
  
  extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
-+
-+#if HAVE_D3D11
 +extern const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11;
-+#endif
 -- 
-2.42.0
+2.46.0.windows.1
