@@ -209,11 +209,13 @@ diff --git a/video/out/gpu/libmpv_gpu.h b/video/out/gpu/libmpv_gpu.h
 index 497dcc3f694c8..fad1a00c0a6d9 100644
 --- a/video/out/gpu/libmpv_gpu.h
 +++ b/video/out/gpu/libmpv_gpu.h
-@@ -38,3 +38,4 @@ struct libmpv_gpu_context_fns {
+@@ -38,3 +38,7 @@ struct libmpv_gpu_context_fns {
  };
  
  extern const struct libmpv_gpu_context_fns libmpv_gpu_context_gl;
++
++#if HAVE_D3D11
 +extern const struct libmpv_gpu_context_fns libmpv_gpu_context_d3d11;
++#endif
 -- 
 2.42.0
-
