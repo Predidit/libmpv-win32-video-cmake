@@ -1,5 +1,5 @@
 diff --git a/libavformat/hls.c b/libavformat/hls.c
-index fe008ee..ebdc318 100644
+index 22ee1c6..d23c0f5 100644
 --- a/libavformat/hls.c
 +++ b/libavformat/hls.c
 @@ -84,6 +84,8 @@ struct segment {
@@ -11,7 +11,7 @@ index fe008ee..ebdc318 100644
  };
  
  struct rendition;
-@@ -222,6 +224,7 @@ typedef struct HLSContext {
+@@ -223,6 +225,7 @@ typedef struct HLSContext {
      AVIOInterruptCB *interrupt_callback;
      AVDictionary *avio_opts;
      AVDictionary *seg_format_opts;
@@ -19,7 +19,7 @@ index fe008ee..ebdc318 100644
      char *allowed_extensions;
      char *allowed_segment_extensions;
      int extension_picky;
-@@ -232,6 +235,23 @@ typedef struct HLSContext {
+@@ -233,6 +236,21 @@ typedef struct HLSContext {
      int seg_max_retry;
      AVIOContext *playlist_pb;
      HLSCryptoContext  crypto_ctx;
@@ -28,22 +28,20 @@ index fe008ee..ebdc318 100644
 +    int has_discontinuity;          /* M3U8 contains #EXT-X-DISCONTINUITY */
 +    int64_t last_main_pts;          /* Last PTS from main content (video) */
 +    int64_t last_main_audio_pts;    /* Last PTS from main content (audio) */
-+    int in_ad_segment;              /* Currently in ad segment (master flag) */
-+    int video_exited_ad;            /* Video stream has exited ad segment */
-+    int audio_exited_ad;            /* Audio stream has exited ad segment */
-+    int64_t ad_exit_pts;            /* PTS when ad was exited */
++    int in_ad_segment;              /* Currently in ad segment */
 +    int after_seek;                 /* Flag to ignore PTS jump after seek */
-+    /* Kazumi: Improved sync after ad exit */
-+    int wait_for_keyframe;          /* Wait for video keyframe after ad exit */
-+    int64_t ad_exit_video_pts;      /* Video PTS when exiting ad */
-+    int64_t ad_exit_audio_pts;      /* Audio PTS when exiting ad */
-+    int sync_settling;              /* In settling period after ad exit */
-+    int settling_video_count;       /* Video packets seen during settling */
-+    int settling_audio_count;       /* Audio packets seen during settling */
++    /* Kazumi: PTS offset approach for seamless playback */
++    int64_t pts_offset;             /* Current PTS offset to apply */
++    int64_t ad_start_video_pts;     /* Video PTS when ad started (before offset) */
++    int64_t ad_start_audio_pts;     /* Audio PTS when ad started (before offset) */
++    int64_t ad_resume_video_pts;    /* Video PTS when resuming from ad */
++    int64_t ad_resume_audio_pts;    /* Audio PTS when resuming from ad */
++    int video_resumed;              /* Video has resumed from ad */
++    int audio_resumed;              /* Audio has resumed from ad */
  } HLSContext;
  
  static void free_segment_dynarray(struct segment **segments, int n_segments)
-@@ -799,6 +819,8 @@ static int parse_playlist(HLSContext *c, const char *url,
+@@ -802,6 +820,8 @@ static int parse_playlist(HLSContext *c, const char *url,
      struct segment **prev_segments = NULL;
      int prev_n_segments = 0;
      int64_t prev_start_seq_no = -1;
@@ -52,7 +50,7 @@ index fe008ee..ebdc318 100644
  
      if (is_http && !in && c->http_persistent && c->playlist_pb) {
          in = c->playlist_pb;
-@@ -965,6 +987,15 @@ static int parse_playlist(HLSContext *c, const char *url,
+@@ -967,6 +987,15 @@ static int parse_playlist(HLSContext *c, const char *url,
          } else if (av_strstart(line, "#EXT-X-ENDLIST", &ptr)) {
              if (pls)
                  pls->finished = 1;
@@ -68,7 +66,7 @@ index fe008ee..ebdc318 100644
          } else if (av_strstart(line, "#EXTINF:", &ptr)) {
              is_segment = 1;
              duration   = atof(ptr) * AV_TIME_BASE;
-@@ -1064,6 +1095,9 @@ static int parse_playlist(HLSContext *c, const char *url,
+@@ -1066,6 +1095,9 @@ static int parse_playlist(HLSContext *c, const char *url,
                  }
  
                  seg->init_section = cur_init_section;
@@ -78,17 +76,19 @@ index fe008ee..ebdc318 100644
              }
          }
      }
-@@ -1993,6 +2027,9 @@ static int hls_read_header(AVFormatContext *s)
+@@ -2132,6 +2164,11 @@ static int hls_read_header(AVFormatContext *s)
      c->first_packet = 1;
      c->first_timestamp = AV_NOPTS_VALUE;
      c->cur_timestamp = AV_NOPTS_VALUE;
 +    /* Kazumi: Initialize ad filtering state */
 +    c->last_main_pts = AV_NOPTS_VALUE;
 +    c->last_main_audio_pts = AV_NOPTS_VALUE;
++    c->ad_start_video_pts = AV_NOPTS_VALUE;
++    c->ad_start_audio_pts = AV_NOPTS_VALUE;
  
      if ((ret = ffio_copy_url_options(s->pb, &c->avio_opts)) < 0)
          return ret;
-@@ -2163,16 +2200,38 @@ static int hls_read_header(AVFormatContext *s)
+@@ -2308,12 +2345,34 @@ static int hls_read_header(AVFormatContext *s)
              in_fmt = av_find_input_format(pls->audio_setup_info.codec_id == AV_CODEC_ID_AAC ? "aac" :
                                            pls->audio_setup_info.codec_id == AV_CODEC_ID_AC3 ? "ac3" : "eac3");
          } else {
@@ -98,6 +98,7 @@ index fe008ee..ebdc318 100644
              pls->ctx->interrupt_callback = s->interrupt_callback;
              url = av_strdup(pls->segments[0]->url);
 -            ret = av_probe_input_buffer(&pls->pb.pub, &in_fmt, url, NULL, 0, 0);
+-
 +            if (!c->seg_allow_img) {
 +                uint8_t b[10] = { 0 };
 +                int max_score = AVPROBE_SCORE_MAX - 2;
@@ -120,26 +121,20 @@ index fe008ee..ebdc318 100644
 +                    }
 +                }
 +            }
- 
 +            ret = av_probe_input_buffer(&pls->pb.pub, &in_fmt, url, NULL, skip, 0);
              for (int n = 0; n < pls->n_segments; n++)
                  if (ret >= 0)
                      ret = test_segment(s, in_fmt, pls, pls->segments[n]);
--
-             if (ret < 0) {
-                 /* Free the ctx - it isn't initialized properly at this point,
-                 * so avformat_close_input shouldn't be called. If
-@@ -2387,6 +2446,128 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
+@@ -2544,6 +2603,114 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
                  }
  
                  seg = current_segment(pls);
 +
-+                /* Kazumi: PTS-based ad filtering - filter ALL packets (audio & video) */
++                /* Kazumi: PTS-based ad filtering with offset adjustment */
 +                if (c->hls_ad_filter && c->has_discontinuity) {
 +                    enum AVMediaType pkt_type = pls->ctx->streams[pls->pkt->stream_index]->codecpar->codec_type;
 +                    int is_video = (pkt_type == AVMEDIA_TYPE_VIDEO);
 +                    int is_audio = (pkt_type == AVMEDIA_TYPE_AUDIO);
-+                    int is_keyframe = (pls->pkt->flags & AV_PKT_FLAG_KEY) != 0;
 +                    int64_t current_pts = pls->pkt->pts != AV_NOPTS_VALUE ? pls->pkt->pts : pls->pkt->dts;
 +                    int64_t pts_in_us = AV_NOPTS_VALUE;
 +
@@ -148,42 +143,50 @@ index fe008ee..ebdc318 100644
 +                        pts_in_us = av_rescale_q(current_pts, pkt_tb, AV_TIME_BASE_Q);
 +                    }
 +
-+                    /* Phase 1: In ad segment - detect exit */
++                    /* Phase 1: In ad segment - drop packets and wait for return */
 +                    if (c->in_ad_segment) {
 +                        if (pts_in_us != AV_NOPTS_VALUE) {
-+                            int64_t ref_pts = is_video ? c->last_main_pts : c->last_main_audio_pts;
++                            int64_t ref_pts = c->ad_start_video_pts;
 +                            int64_t pts_diff;
-+                            if (ref_pts == AV_NOPTS_VALUE) ref_pts = c->last_main_pts;
-+
++                            if (ref_pts == AV_NOPTS_VALUE) ref_pts = c->ad_start_audio_pts;
 +                            pts_diff = pts_in_us - ref_pts;
 +
-+                            /* Check if this track has returned to main content PTS range */
++                            /* Check if returned to main content PTS range */
 +                            if (pts_diff > -2000000 && pts_diff < 10000000) {
-+                                if (is_video && !c->video_exited_ad) {
-+                                    c->video_exited_ad = 1;
-+                                    c->ad_exit_video_pts = pts_in_us;
-+                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Video exited ad at PTS=%"PRId64"ms\n", pts_in_us/1000);
++                                /* Resuming from ad */
++                                if (is_video && !c->video_resumed) {
++                                    c->video_resumed = 1;
++                                    c->ad_resume_video_pts = pts_in_us;
++                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Video resuming at PTS=%"PRId64"ms\n", pts_in_us/1000);
 +                                }
-+                                if (is_audio && !c->audio_exited_ad) {
-+                                    c->audio_exited_ad = 1;
-+                                    c->ad_exit_audio_pts = pts_in_us;
-+                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Audio exited ad at PTS=%"PRId64"ms\n", pts_in_us/1000);
++                                if (is_audio && !c->audio_resumed) {
++                                    c->audio_resumed = 1;
++                                    c->ad_resume_audio_pts = pts_in_us;
++                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Audio resuming at PTS=%"PRId64"ms\n", pts_in_us/1000);
 +                                }
 +
-+                                /* Only fully exit ad mode when BOTH video and audio have exited */
-+                                if (c->video_exited_ad && c->audio_exited_ad) {
++                                /* When both tracks resumed, calculate and apply offset */
++                                if (c->video_resumed && c->audio_resumed) {
++                                    int64_t video_gap = c->ad_resume_video_pts - c->ad_start_video_pts;
++                                    c->pts_offset -= video_gap;
++                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Ad skipped! Offset adjusted by %"PRId64"ms, total offset=%"PRId64"ms\n",
++                                           -video_gap/1000, c->pts_offset/1000);
 +                                    c->in_ad_segment = 0;
-+                                    c->sync_settling = 1;
-+                                    c->wait_for_keyframe = 1;
-+                                    c->settling_video_count = 0;
-+                                    c->settling_audio_count = 0;
-+                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Both tracks exited ad, entering settling phase\n");
 +                                }
-+                                /* Drop packet during transition */
-+                                av_packet_unref(pls->pkt);
-+                                continue;
++
++                                /* Apply offset and let packet through */
++                                if (c->pts_offset != 0 && pls->pkt->pts != AV_NOPTS_VALUE) {
++                                    AVRational pkt_tb = pls->ctx->streams[pls->pkt->stream_index]->time_base;
++                                    int64_t offset_in_tb = av_rescale_q(c->pts_offset, AV_TIME_BASE_Q, pkt_tb);
++                                    pls->pkt->pts += offset_in_tb;
++                                    if (pls->pkt->dts != AV_NOPTS_VALUE)
++                                        pls->pkt->dts += offset_in_tb;
++                                }
++                                /* Update tracking */
++                                if (is_video) c->last_main_pts = pts_in_us + c->pts_offset;
++                                if (is_audio) c->last_main_audio_pts = pts_in_us + c->pts_offset;
 +                            } else {
-+                                /* Still in ad, drop packet */
++                                /* Still in ad content, drop packet */
 +                                av_packet_unref(pls->pkt);
 +                                continue;
 +                            }
@@ -193,64 +196,43 @@ index fe008ee..ebdc318 100644
 +                            continue;
 +                        }
 +                    }
-+                    /* Phase 2: Settling period - wait for keyframe then resume immediately */
-+                    else if (c->sync_settling) {
-+                        if (is_video && c->wait_for_keyframe) {
-+                            if (is_keyframe) {
-+                                /* Found keyframe - resume playback immediately */
-+                                c->wait_for_keyframe = 0;
-+                                c->sync_settling = 0;
-+                                c->last_main_pts = pts_in_us;
-+                                av_log(c->ctx, AV_LOG_INFO, "Kazumi: Resuming at keyframe PTS=%"PRId64"ms\n", pts_in_us/1000);
-+                                /* Let this keyframe through */
-+                            } else {
-+                                /* Not a keyframe, drop and wait */
-+                                av_packet_unref(pls->pkt);
-+                                continue;
-+                            }
-+                        } else if (is_audio && c->wait_for_keyframe) {
-+                            /* Drop audio until we find video keyframe */
-+                            av_packet_unref(pls->pkt);
-+                            continue;
-+                        } else {
-+                            /* Keyframe found, update PTS tracking */
-+                            if (is_video) c->last_main_pts = pts_in_us;
-+                            if (is_audio) c->last_main_audio_pts = pts_in_us;
-+                            /* Let packet through */
-+                        }
-+                    }
-+                    /* Phase 3: Normal playback - detect new ad */
++                    /* Phase 2: Normal playback - detect ad and apply offset */
 +                    else {
 +                        if (pts_in_us != AV_NOPTS_VALUE) {
 +                            if (c->after_seek) {
-+                                /* After seek: reset PTS tracking */
 +                                if (is_video) c->last_main_pts = pts_in_us;
 +                                if (is_audio) c->last_main_audio_pts = pts_in_us;
 +                                c->after_seek = 0;
-+                                c->sync_settling = 0;
-+                                av_log(c->ctx, AV_LOG_DEBUG, "Kazumi: After seek, reset PTS to %"PRId64"ms\n", pts_in_us/1000);
-+                            } else if (is_video) {
-+                                /* Use VIDEO for ad detection (more reliable) */
-+                                if (c->last_main_pts != AV_NOPTS_VALUE) {
-+                                    int64_t pts_diff = pts_in_us - c->last_main_pts;
++                                c->pts_offset = 0;
++                            } else if (is_video && c->last_main_pts != AV_NOPTS_VALUE) {
++                                int64_t pts_diff = pts_in_us - (c->last_main_pts - c->pts_offset);
 +
-+                                    /* Ad detection: PTS jumps backward significantly (> 1 sec) */
-+                                    if (pts_diff < -1000000) {
-+                                        c->in_ad_segment = 1;
-+                                        c->video_exited_ad = 0;
-+                                        c->audio_exited_ad = 0;
-+                                        c->sync_settling = 0;
-+                                        av_log(c->ctx, AV_LOG_INFO, "Kazumi: Ad detected! PTS jumped from %"PRId64"ms to %"PRId64"ms\n",
-+                                               c->last_main_pts/1000, pts_in_us/1000);
-+                                        av_packet_unref(pls->pkt);
-+                                        continue;
-+                                    }
++                                /* Ad detection: PTS jumps backward significantly (> 1 sec) */
++                                if (pts_diff < -1000000) {
++                                    c->in_ad_segment = 1;
++                                    c->video_resumed = 0;
++                                    c->audio_resumed = 0;
++                                    c->ad_start_video_pts = c->last_main_pts - c->pts_offset;
++                                    c->ad_start_audio_pts = c->last_main_audio_pts - c->pts_offset;
++                                    av_log(c->ctx, AV_LOG_INFO, "Kazumi: Ad detected! PTS jumped from %"PRId64"ms to %"PRId64"ms\n",
++                                           (c->last_main_pts - c->pts_offset)/1000, pts_in_us/1000);
++                                    av_packet_unref(pls->pkt);
++                                    continue;
 +                                }
-+                                c->last_main_pts = pts_in_us;
-+                            } else if (is_audio) {
-+                                /* Track audio PTS for sync */
-+                                c->last_main_audio_pts = pts_in_us;
 +                            }
++
++                            /* Apply offset if any */
++                            if (c->pts_offset != 0 && pls->pkt->pts != AV_NOPTS_VALUE) {
++                                AVRational pkt_tb = pls->ctx->streams[pls->pkt->stream_index]->time_base;
++                                int64_t offset_in_tb = av_rescale_q(c->pts_offset, AV_TIME_BASE_Q, pkt_tb);
++                                pls->pkt->pts += offset_in_tb;
++                                if (pls->pkt->dts != AV_NOPTS_VALUE)
++                                    pls->pkt->dts += offset_in_tb;
++                            }
++
++                            /* Update tracking */
++                            if (is_video) c->last_main_pts = pts_in_us + c->pts_offset;
++                            if (is_audio) c->last_main_audio_pts = pts_in_us + c->pts_offset;
 +                        }
 +                    }
 +                }
@@ -258,22 +240,20 @@ index fe008ee..ebdc318 100644
                  if (seg && seg->key_type == KEY_SAMPLE_AES && !strstr(pls->ctx->iformat->name, "mov")) {
                      enum AVCodecID codec_id = pls->ctx->streams[pls->pkt->stream_index]->codecpar->codec_id;
                      memcpy(c->crypto_ctx.iv, seg->iv, sizeof(seg->iv));
-@@ -2506,6 +2687,14 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
+@@ -2663,6 +2830,12 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
      int64_t first_timestamp, seek_timestamp, duration;
      int64_t seq_no, seg_start_ts;
  
-+    /* Kazumi: Mark that we're seeking - will be cleared on first normal packet */
++    /* Kazumi: Mark that we're seeking - reset ad filtering state */
 +    c->after_seek = 1;
 +    c->in_ad_segment = 0;
-+    c->video_exited_ad = 0;
-+    c->audio_exited_ad = 0;
-+    c->sync_settling = 0;
-+    c->wait_for_keyframe = 0;
++    c->video_resumed = 0;
++    c->audio_resumed = 0;
 +
      if ((flags & AVSEEK_FLAG_BYTE) || (c->ctx->ctx_flags & AVFMTCTX_UNSEEKABLE))
          return AVERROR(ENOSYS);
  
-@@ -2664,6 +2853,10 @@ static const AVOption hls_options[] = {
+@@ -2824,6 +2997,10 @@ static const AVOption hls_options[] = {
          OFFSET(seg_format_opts), AV_OPT_TYPE_DICT, {.str = NULL}, 0, 0, FLAGS},
      {"seg_max_retry", "Maximum number of times to reload a segment on error.",
       OFFSET(seg_max_retry), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, FLAGS},
