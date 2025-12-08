@@ -22,8 +22,10 @@ elseif(COMPILER_TOOLCHAIN STREQUAL "clang")
     set(mpv_lto_mode "-Db_lto_mode=thin")
     set(mpv_copy_debug COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/mpv.pdb ${CMAKE_CURRENT_BINARY_DIR}/mpv-debug/mpv.pdb)
     if(CLANG_PACKAGES_LTO)
+        # Note: Removed '-C linker-plugin-lto' to avoid LLVM version mismatch between Rust (LLVM 21) and Clang (LLVM 20)
+        # This disables cross-language LTO but keeps Rust internal LTO. See CHANGELOG.md for details.
         set(cargo_lto_rustflags "CARGO_PROFILE_RELEASE_LTO=thin
-                                 RUSTFLAGS='-C linker-plugin-lto -C embed-bitcode -C lto=thin'")
+                                 RUSTFLAGS='-C embed-bitcode -C lto=thin'")
         set(ffmpeg_lto "--enable-lto=thin")
         if(NOT (GCC_ARCH_HAS_AVX OR (TARGET_CPU STREQUAL "aarch64")))
             set(zlib_nlto "LTO=0")
