@@ -1,19 +1,34 @@
-From aa46b1eb3b94e8d2d8d59c361f30a694d8689a81 Mon Sep 17 00:00:00 2001
-From: shinchiro <shinchiro@users.noreply.github.com>
-Date: Sat, 28 Jun 2025 07:18:49 +0800
+From eab9075eed39e8ab3092f21821d6a5e1ee2f947a Mon Sep 17 00:00:00 2001
+From: 0chencc <19362246+0Chencc@users.noreply.github.com>
+Date: Mon, 8 Dec 2025 12:21:41 +0800
 Subject: [PATCH] Custom changes for mpv builds
 
-Based on original lachs0r's patch for fontconfig
+- Add progress display during font scanning
+- Auto-detect Windows font/cache directories
+- Remove dirent.h check (fixes Windows partition issues, mpv#10679)
 ---
+ meson.build  |  1 -
  src/fcdir.c  | 33 +++++++++++++++++++++++----------
  src/fcinit.c | 35 +++++++++++++++++++++++++++++++++++
- 2 files changed, 58 insertions(+), 10 deletions(-)
+ 3 files changed, 58 insertions(+), 11 deletions(-)
 
+diff --git a/meson.build b/meson.build
+index 7189f4b..25a4386 100644
+--- a/meson.build
++++ b/meson.build
+@@ -97,7 +97,6 @@ python3 = import('python').find_installation()
+ pytest = find_program('pytest', required: false)
+ 
+ check_headers = [
+-  ['dirent.h'],
+   ['dlfcn.h'],
+   ['fcntl.h'],
+   ['inttypes.h'],
 diff --git a/src/fcdir.c b/src/fcdir.c
-index 9527d94..64cdc5f 100644
+index c17875f..46e4000 100644
 --- a/src/fcdir.c
 +++ b/src/fcdir.c
-@@ -76,11 +76,6 @@ FcFileScanFontConfig (FcFontSet     *set,
+@@ -80,11 +80,6 @@ FcFileScanFontConfig (FcFontSet     *set,
      int            old_nfont = set->nfont;
      const FcChar8 *sysroot = FcConfigGetSysRoot (config);
  
@@ -22,10 +37,10 @@ index 9527d94..64cdc5f 100644
 -	fflush (stdout);
 -    }
 -
-     unsigned int (*query_function) (const FcChar8 *, unsigned int, FcBlanks *, int *, FcFontSet *) = FcFreeTypeQueryAll;
- #if ENABLE_FONTATIONS
-     if (getenv ("FC_FONTATIONS")) {
-@@ -90,9 +85,6 @@ FcFileScanFontConfig (FcFontSet     *set,
+     unsigned int (*query_function) (const FcChar8 *, unsigned int, FcBlanks *, int *, FcFontSet *) =
+ #if ENABLE_FONTATIONS && !defined(ENABLE_FREETYPE)
+     FcFontationsQueryAll;
+@@ -100,9 +95,6 @@ FcFileScanFontConfig (FcFontSet     *set,
      if (!query_function (file, -1, NULL, NULL, set))
  	return FcFalse;
  
@@ -35,7 +50,7 @@ index 9527d94..64cdc5f 100644
      for (i = old_nfont; i < set->nfont; i++) {
  	FcPattern *font = set->fonts[i];
  
-@@ -233,7 +225,7 @@ FcDirScanConfig (FcFontSet     *set,
+@@ -243,7 +235,7 @@ FcDirScanConfig (FcFontSet     *set,
      base = file_prefix + strlen ((char *)file_prefix);
  
      if (FcDebug() & FC_DBG_SCAN)
@@ -44,7 +59,7 @@ index 9527d94..64cdc5f 100644
  
      d = opendir ((char *)s_dir);
      if (!d) {
-@@ -272,8 +264,29 @@ FcDirScanConfig (FcFontSet     *set,
+@@ -282,8 +274,29 @@ FcDirScanConfig (FcFontSet     *set,
      /*
       * Scan file files to build font patterns
       */
@@ -135,4 +150,5 @@ index 9c66515..f0a1e8e 100644
      FcConfigDestroy (config);
  bail0:
 -- 
-2.49.0
+2.43.0
+

@@ -140,6 +140,12 @@ jobs:
           name: mpv-${{ matrix.bit }}-debug
           path: release_${{ matrix.bit }}/mpv-debug-${{ env.arch }}*
 
+      - name: Uploading ${{ matrix.bit }} dev (libmpv)
+        uses: actions/upload-artifact@master
+        with:
+          name: mpv-${{ matrix.bit }}-dev
+          path: release_${{ matrix.bit }}/mpv-dev-${{ env.arch }}*
+
       - name: Cleaning build directory
         if: always()
         run: |
