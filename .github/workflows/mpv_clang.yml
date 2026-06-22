@@ -107,7 +107,7 @@ jobs:
           if [[ "${{ steps.load_repository_cache.outputs.cache-hit }}" != "true" || ! -e src_packages/opus/.git ]]; then
             find build_$BIT/packages -path "*/src/*-stamp/*-download" -delete || true
           fi
-          ninja -C build_$BIT download || true
+          ninja -C build_$BIT download
 
       - name: Building mpv
         id: build_mpv_step
