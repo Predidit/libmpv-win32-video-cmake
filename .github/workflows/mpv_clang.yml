@@ -79,6 +79,7 @@ jobs:
             ${{ secrets.CACHE_VERSION }}-clang_root
 
       - name: Loading repository cache
+        id: load_repository_cache
         uses: actions/cache/restore@main
         with:
           path: src_packages
@@ -103,6 +104,9 @@ jobs:
       - name: Configuring CMake & Downloading source
         run: |
           cmake -DTARGET_ARCH=${{ env.arch }}-w64-mingw32 -DCOMPILER_TOOLCHAIN=clang ${{ env.x86_64_v3_ARCH }} -DCMAKE_INSTALL_PREFIX=$PWD/clang_root -DMINGW_INSTALL_PREFIX=$PWD/build_$BIT/$BIT-w64-mingw32 -DSINGLE_SOURCE_LOCATION=$PWD/src_packages -DRUSTUP_LOCATION=$PWD/clang_root/install_rustup -DENABLE_CCACHE=ON -DCLANG_PACKAGES_LTO=ON -G Ninja --fresh -B build_$BIT -S $PWD
+          if [[ "${{ steps.load_repository_cache.outputs.cache-hit }}" != "true" || ! -e src_packages/opus/.git ]]; then
+            find build_$BIT/packages -path "*/src/*-stamp/*-download" -delete || true
+          fi
           ninja -C build_$BIT download || true
 
       - name: Building mpv
@@ -170,28 +174,12 @@ jobs:
         run: |
           ninja -C build_$BIT cargo-clean
 
-      - name: Saving clang sysroot cache
-        uses: actions/cache/save@main
-        if: ${{ always() && matrix.bit == 'x86_64' }}
-        with:
-          path: |
-            clang_root
-          key: ${{ secrets.CACHE_VERSION }}-clang_root-${{ github.run_id }}
-
       - name: Saving repository cache
         uses: actions/cache/save@main
-        if: ${{ always() && matrix.bit == 'x86_64' }}
+        if: ${{ success() && matrix.bit == 'x86_64' }}
         with:
           path: src_packages
           key: ${{ secrets.CACHE_VERSION }}-repository-${{ github.run_id }}
-
-      - name: Saving ${{ matrix.bit }} toolchain cache
-        uses: actions/cache/save@main
-        if: always()
-        with:
-          path: |
-            build_${{ matrix.bit }}
-          key: ${{ secrets.CACHE_VERSION }}-clang-${{ matrix.bit }}_toolchain-${{ github.run_id }}
 
       - name: Saving release_${{ matrix.bit }} cache
         uses: actions/cache/save@main
