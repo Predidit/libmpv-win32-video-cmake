@@ -117,7 +117,14 @@ jobs:
       - name: Packaging mpv
         run: |
           mkdir -p release_$BIT
-          ninja -C build_$BIT mpv-packaging; mv build_$BIT/mpv*.7z release_$BIT
+          ninja -C build_$BIT mpv-packaging
+          shopt -s nullglob
+          artifacts=(build_$BIT/mpv*.7z build_$BIT/mpv*.zip)
+          if ((${#artifacts[@]} == 0)); then
+            echo "No mpv archives were produced."
+            exit 1
+          fi
+          mv "${artifacts[@]}" release_$BIT
 
       - name: Collecting logs
         if: always()
@@ -156,7 +163,7 @@ jobs:
         if: always()
         run: |
           rm -rf build_$BIT/mpv*
-          rm -rf release_$BIT/mpv-debug*.7z
+          rm -rf release_$BIT/mpv-debug*.7z release_$BIT/mpv-debug*.zip
 
       - name: Cleaning rust toolchain directory
         if: always()
@@ -192,7 +199,7 @@ jobs:
           path: release_${{ matrix.bit }}
           key: ${{ secrets.CACHE_VERSION }}-release_${{ matrix.bit }}-${{ github.run_id }}
 
-      - name: Delete previous cache
+      - name: Delete previous repository cache
         if: ${{ always() && matrix.bit == 'x86_64' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -200,13 +207,12 @@ jobs:
           CACHE_ID: ${{ steps.load_clang_cache.outputs.cache-matched-key }}
           PREFIX: ${{ secrets.CACHE_VERSION }}
         run: |
+          if [[ -z "$CACHE_ID" ]]; then
+            echo "No previous clang cache matched; skipping repository cache cleanup."
+            exit 0
+          fi
           cache_key=${CACHE_ID##*-}
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-clang_root-$cache_key
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-repository-$cache_key
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-clang-i686_toolchain-$cache_key
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-clang-x86_64_toolchain-$cache_key
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-clang-x86_64_v3_toolchain-$cache_key
-          curl -u shinchiro:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/actions/caches?key=$PREFIX-clang-aarch64_toolchain-$cache_key
+          curl -u Predidit:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/$GITHUB_REPOSITORY/actions/caches?key=$PREFIX-repository-$cache_key
 
   release:
     name: Upload releases
@@ -281,4 +287,5 @@ jobs:
           }
           END
           )
-          for file in release/*.7z; do curl -u Predidit:$GH_TOKEN $CURL_RETRIES -X POST -H "Accept: application/vnd.github.v3+json" -H "Content-Type: $(file -b --mime-type $file)" https://uploads.github.com/repos/Predidit/libmpv-win32-video-cmake/releases/$id/assets?name=$(basename $file) --data-binary @$file; done
+          shopt -s nullglob
+          for file in release/*.7z release/*.zip; do curl -u Predidit:$GH_TOKEN $CURL_RETRIES -X POST -H "Accept: application/vnd.github.v3+json" -H "Content-Type: $(file -b --mime-type $file)" https://uploads.github.com/repos/Predidit/libmpv-win32-video-cmake/releases/$id/assets?name=$(basename $file) --data-binary @$file; done
