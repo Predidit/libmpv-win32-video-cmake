@@ -1,5 +1,5 @@
 diff --git a/libavformat/hls.c b/libavformat/hls.c
-index 22ee1c6..d23c0f5 100644
+index 900e96c..d293580 100644
 --- a/libavformat/hls.c
 +++ b/libavformat/hls.c
 @@ -84,6 +84,8 @@ struct segment {
@@ -11,7 +11,7 @@ index 22ee1c6..d23c0f5 100644
  };
  
  struct rendition;
-@@ -223,6 +225,7 @@ typedef struct HLSContext {
+@@ -222,6 +224,7 @@ typedef struct HLSContext {
      AVIOInterruptCB *interrupt_callback;
      AVDictionary *avio_opts;
      AVDictionary *seg_format_opts;
@@ -19,7 +19,7 @@ index 22ee1c6..d23c0f5 100644
      char *allowed_extensions;
      char *allowed_segment_extensions;
      int extension_picky;
-@@ -233,6 +236,21 @@ typedef struct HLSContext {
+@@ -232,6 +235,21 @@ typedef struct HLSContext {
      int seg_max_retry;
      AVIOContext *playlist_pb;
      HLSCryptoContext  crypto_ctx;
@@ -41,7 +41,7 @@ index 22ee1c6..d23c0f5 100644
  } HLSContext;
  
  static void free_segment_dynarray(struct segment **segments, int n_segments)
-@@ -802,6 +820,8 @@ static int parse_playlist(HLSContext *c, const char *url,
+@@ -804,6 +822,8 @@ static int parse_playlist(HLSContext *c, const char *url,
      struct segment **prev_segments = NULL;
      int prev_n_segments = 0;
      int64_t prev_start_seq_no = -1;
@@ -50,7 +50,7 @@ index 22ee1c6..d23c0f5 100644
  
      if (is_http && !in && c->http_persistent && c->playlist_pb) {
          in = c->playlist_pb;
-@@ -967,6 +987,15 @@ static int parse_playlist(HLSContext *c, const char *url,
+@@ -975,6 +995,15 @@ static int parse_playlist(HLSContext *c, const char *url,
          } else if (av_strstart(line, "#EXT-X-ENDLIST", &ptr)) {
              if (pls)
                  pls->finished = 1;
@@ -64,9 +64,9 @@ index 22ee1c6..d23c0f5 100644
 +                next_seg_after_discontinuity = 1;
 +            }
          } else if (av_strstart(line, "#EXTINF:", &ptr)) {
-             is_segment = 1;
-             duration   = atof(ptr) * AV_TIME_BASE;
-@@ -1066,6 +1095,9 @@ static int parse_playlist(HLSContext *c, const char *url,
+             double d = atof(ptr) * AV_TIME_BASE;
+             if (d < 0 || d > INT64_MAX || isnan(d)) {
+@@ -1083,6 +1112,9 @@ static int parse_playlist(HLSContext *c, const char *url,
                  }
  
                  seg->init_section = cur_init_section;
@@ -76,7 +76,7 @@ index 22ee1c6..d23c0f5 100644
              }
          }
      }
-@@ -2132,6 +2164,11 @@ static int hls_read_header(AVFormatContext *s)
+@@ -2012,6 +2044,11 @@ static int hls_read_header(AVFormatContext *s)
      c->first_packet = 1;
      c->first_timestamp = AV_NOPTS_VALUE;
      c->cur_timestamp = AV_NOPTS_VALUE;
@@ -88,7 +88,7 @@ index 22ee1c6..d23c0f5 100644
  
      if ((ret = ffio_copy_url_options(s->pb, &c->avio_opts)) < 0)
          return ret;
-@@ -2308,12 +2345,34 @@ static int hls_read_header(AVFormatContext *s)
+@@ -2182,12 +2219,34 @@ static int hls_read_header(AVFormatContext *s)
              in_fmt = av_find_input_format(pls->audio_setup_info.codec_id == AV_CODEC_ID_AAC ? "aac" :
                                            pls->audio_setup_info.codec_id == AV_CODEC_ID_AC3 ? "ac3" : "eac3");
          } else {
@@ -125,7 +125,7 @@ index 22ee1c6..d23c0f5 100644
              for (int n = 0; n < pls->n_segments; n++)
                  if (ret >= 0)
                      ret = test_segment(s, in_fmt, pls, pls->segments[n]);
-@@ -2544,6 +2603,114 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
+@@ -2406,6 +2465,114 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
                  }
  
                  seg = current_segment(pls);
@@ -240,7 +240,7 @@ index 22ee1c6..d23c0f5 100644
                  if (seg && seg->key_type == KEY_SAMPLE_AES && !strstr(pls->ctx->iformat->name, "mov")) {
                      enum AVCodecID codec_id = pls->ctx->streams[pls->pkt->stream_index]->codecpar->codec_id;
                      memcpy(c->crypto_ctx.iv, seg->iv, sizeof(seg->iv));
-@@ -2663,6 +2830,12 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
+@@ -2525,6 +2692,12 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
      int64_t first_timestamp, seek_timestamp, duration;
      int64_t seq_no, seg_start_ts;
  
@@ -253,7 +253,7 @@ index 22ee1c6..d23c0f5 100644
      if ((flags & AVSEEK_FLAG_BYTE) || (c->ctx->ctx_flags & AVFMTCTX_UNSEEKABLE))
          return AVERROR(ENOSYS);
  
-@@ -2824,6 +2997,10 @@ static const AVOption hls_options[] = {
+@@ -2683,6 +2856,10 @@ static const AVOption hls_options[] = {
          OFFSET(seg_format_opts), AV_OPT_TYPE_DICT, {.str = NULL}, 0, 0, FLAGS},
      {"seg_max_retry", "Maximum number of times to reload a segment on error.",
       OFFSET(seg_max_retry), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, FLAGS},
