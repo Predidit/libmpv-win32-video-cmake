@@ -133,7 +133,7 @@ index 0dc4227..e7fcea0 100644
  // All set through CMake
  #define VER_FILE_VERSION ${LOADER_VER_FILE_VERSION}
 diff --git a/loader/loader_windows.c b/loader/loader_windows.c
-index 91cdfd0..9c6a326 100644
+index 28fa821..f200662 100644
 --- a/loader/loader_windows.c
 +++ b/loader/loader_windows.c
 @@ -95,6 +95,7 @@ void windows_initialization(void) {
@@ -144,14 +144,14 @@ index 91cdfd0..9c6a326 100644
  BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
      (void)hinst;
      switch (reason) {
-@@ -116,6 +117,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
+@@ -115,6 +116,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
      }
      return TRUE;
  }
 +#endif
  
- bool windows_add_json_entry(const struct loader_instance *inst,
-                             char **reg_data,    // list of JSON files
+ VkResult windows_add_json_entry(const struct loader_instance *inst, struct loader_string_list *search_paths,
+                                 LPCSTR key_name,  // key name - used for debug prints - i.e. VulkanDriverName
 diff --git a/loader/vk_loader_platform.h b/loader/vk_loader_platform.h
 index 987337c..5acc00f 100644
 --- a/loader/vk_loader_platform.h
