@@ -30,7 +30,7 @@ ExternalProject_Add(ffmpeg
     GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_CLONE_FLAGS "--sparse --filter=tree:0"
-    GIT_TAG 818e5d965be955be8842ee3a4cdd7b43ab81661d
+    GIT_TAG 6efe500d2e9e24a81bffda8825511f6bc9760cb1
     GIT_CLONE_POST_COMMAND "sparse-checkout set --no-cone /* !tests/ref/fate"
     PATCH_COMMAND ${EXEC} git apply ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg-*.patch
     UPDATE_COMMAND ""

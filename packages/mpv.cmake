@@ -16,7 +16,7 @@ ExternalProject_Add(mpv
         libplacebo
         spirv-cross
     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
-    GIT_TAG f5bcfb195412e0ca733eac2e850879cd3b1ded18
+    GIT_TAG 0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6
     SOURCE_DIR ${SOURCE_LOCATION}
     PATCH_COMMAND ${EXEC} git apply ${CMAKE_CURRENT_SOURCE_DIR}/mpv-*.patch
     UPDATE_COMMAND ""
