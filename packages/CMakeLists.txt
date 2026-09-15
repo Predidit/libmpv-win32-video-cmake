@@ -19,7 +19,6 @@ list(APPEND ep
     speex
     libmodplug
     libvpx
-    xvidcore
     game-music-emu
     libpng
     x264
@@ -73,7 +72,6 @@ list(APPEND ep
     shaderc
     glad
     fast_float
-    libdovi
     libplacebo
     libva
     libzvbi
