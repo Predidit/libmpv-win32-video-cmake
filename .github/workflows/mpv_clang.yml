@@ -202,10 +202,42 @@ jobs:
           cache_key=${CACHE_ID##*-}
           curl -u Predidit:$GH_TOKEN $CURL_RETRIES -s -o /dev/null -X DELETE -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/$GITHUB_REPOSITORY/actions/caches?key=$PREFIX-repository-$cache_key
 
+  test_mpv_tls:
+    name: Testing Windows HTTPS playback
+    runs-on: windows-latest
+    needs: build_mpv
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: actions/download-artifact@main
+        with:
+          name: mpv-x86_64
+          path: tls-test-artifact
+
+      - name: Extracting mpv
+        run: |
+          $archive = @(Get-ChildItem tls-test-artifact -File | Where-Object { $_.Extension -in '.7z', '.zip' })
+          if ($archive.Count -ne 1) { throw 'Expected exactly one mpv archive.' }
+          & 7z x $archive[0].FullName '-otls-test-mpv' -y
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to extract mpv.' }
+
+      - name: Testing TLS defaults and HTTPS decoding
+        run: |
+          $mpv = @(Get-ChildItem tls-test-mpv -Recurse -Filter mpv.com)
+          if ($mpv.Count -ne 1) { throw 'Expected exactly one mpv.com.' }
+          $caFile = Join-Path $env:RUNNER_TEMP 'mpv-test-cacert.pem'
+          & curl.exe --fail --silent --show-error --connect-timeout 15 --max-time 60 --output $caFile https://curl.se/ca/cacert.pem
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to fetch the trusted CA bundle.' }
+          & ./scripts/test-mpv-tls.ps1 -Mpv $mpv[0].FullName -TrustedCaFile $caFile
+
   release:
     name: Upload releases
     runs-on: ubuntu-latest
-    needs: build_mpv
+    needs: [build_mpv, test_mpv_tls]
     env:
       GH_TOKEN: ${{ github.token }}
       CURL_RETRIES: "--connect-timeout 60 --retry 999 --retry-delay 5 --retry-all-errors"
