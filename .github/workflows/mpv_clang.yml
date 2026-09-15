@@ -262,12 +262,12 @@ jobs:
         if: ${{ github.event.inputs.github_release == 'true' && github.event.inputs.mpv_tarball == 'false' }}
         run: |
           set -euo pipefail
-          short_date=$(date "+%Y%m%d")
+          release_tag=$(date -u +%Y%m%d%H%M)
           body=$(cat <<END
           **Workflow run**: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           END
           )
-          release_response=$(jq -n --arg tag "$short_date" --arg name "$short_date" --arg body "$body" '{tag_name: $tag, name: $name, body: $body}' | curl -u "Predidit:$GH_TOKEN" $CURL_RETRIES --fail-with-body -sS -X POST -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases" -d @-)
+          release_response=$(jq -n --arg tag "$release_tag" --arg name "$release_tag" --arg body "$body" '{tag_name: $tag, name: $name, body: $body}' | curl -u "Predidit:$GH_TOKEN" $CURL_RETRIES --fail-with-body -sS -X POST -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases" -d @-)
           upload_url=$(jq -r '.upload_url | sub("\\{\\?name,label\\}$"; "")' <<< "$release_response")
           if [[ -z "$upload_url" || "$upload_url" == "null" ]]; then
             echo "Release response did not include upload_url:"
