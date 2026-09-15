@@ -1,0 +1,43 @@
+From: Predidit <34627277+Predidit@users.noreply.github.com>
+Subject: [PATCH] network: restore the legacy TLS verification default
+
+Keep mpv and libmpv compatible with this project's previous builds, which
+disabled certificate verification by default. Explicit tls-verify=yes
+continues to work. This deliberately trades HTTPS authentication for
+backwards compatibility; document that in the bundled manual as well.
+
+diff --git a/stream/network.c b/stream/network.c
+--- a/stream/network.c
++++ b/stream/network.c
+@@ -51,9 +51,7 @@ const struct m_sub_options mp_network_conf = {
+     .defaults = &(const struct mp_network_opts){
+         .useragent = "libmpv",
+         .timeout = 60,
+-#if HAVE_LIBCURL || LIBAVFORMAT_VERSION_MAJOR >= 63
+-        .tls_verify = true,
+-#endif
++        .tls_verify = false,
+     },
+ };
+
+diff --git a/DOCS/man/options.rst b/DOCS/man/options.rst
+--- a/DOCS/man/options.rst
++++ b/DOCS/man/options.rst
+@@ -5742,13 +5742,13 @@ Network
+ ``--tls-verify=<yes|no>``
+     Verify peer certificates when using TLS (e.g. with ``https://...``)
+-    (default: yes*). Disabling this option allows man-in-the-middle attacks
+-    to silently substitute the content of an HTTPS stream and is only
++    (default in this build: no). Disabling this option allows man-in-the-middle
++    attacks to silently substitute the content of an HTTPS stream and is only
+     recommended as a per-stream override when verification fails for a
+     known-good reason (e.g. an outdated CA bundle, a corporate proxy, a
+     development server with a self-signed certificate).
+
+-    This is disabled by default, if mpv is built without libcurl and
+-    libavformat is older than 63.0.100.
++    This build disables verification by default for backwards compatibility.
++    Use ``--tls-verify=yes`` with a trusted ``--tls-ca-file`` to enable it.
+
+ ``--tls-cert-file``
+     A file containing a certificate to use in the handshake with the
