@@ -16,7 +16,7 @@ ExternalProject_Add(mpv
         libplacebo
         spirv-cross
     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
-    GIT_TAG 0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6
+    GIT_TAG bcde6b93cca4d128d84e1a60d1a6db2cd81c889e
     SOURCE_DIR ${SOURCE_LOCATION}
     PATCH_COMMAND ${EXEC} git apply ${CMAKE_CURRENT_SOURCE_DIR}/mpv-*.patch
     UPDATE_COMMAND ""
@@ -68,7 +68,7 @@ ExternalProject_Add_Step(mpv copy-binary
     COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/stream_cb.h    ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/stream_cb.h
     COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render.h       ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render.h
     COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render_gl.h    ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render_gl.h
-    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render_dxgi.h  ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render_dxgi.h
+    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render_d3d11.h ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render_d3d11.h
     COMMENT "Copying mpv binaries and manual"
 )
 
